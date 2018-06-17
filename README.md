@@ -1,4 +1,4 @@
-# EOS BLCKCHND VOTE OFFLINE
+# EOS VOTE OFFLINE
 
 ## Rationale
 
