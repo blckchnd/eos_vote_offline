@@ -1,0 +1,236 @@
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <script src="eos.js"></script>
+  <script>
+    function generate_transaction() {
+      let account_name = document.getElementById('account_name').value;
+      let private_key = document.getElementById('private_key').value;
+      let block_producers = document.getElementById('bp').value;
+      block_producers = block_producers.split(',').map(function (s) {
+        return s.trim();
+      }).sort(function (a, b) {
+        return parseInt(Eos.modules.format.encodeName(a, false)) - parseInt(Eos.modules.format.encodeName(b, false));
+      });
+      let expireInSeconds = 60 * document.getElementById('minutes_before_expiration').value;
+      let block_num = +document.getElementById('block_num').value;
+      let chainId = document.getElementById('chainId').value;
+      let ref_block_num = block_num & 0xFFFF;
+      let ref_block_prefix = +document.getElementById('ref_block_prefix').value;
+      let options = {
+        broadcast: false
+        , sign: true
+        , authorization: account_name
+      };
+      let headers = {
+        ref_block_num: ref_block_num
+        , ref_block_prefix: ref_block_prefix
+        , expiration: new Date(new Date().getTime() + expireInSeconds * 1000).toISOString().split('.')[0]
+        , net_usage_words: 0
+        , max_cpu_usage_ms: 0
+        , delay_sec: 0
+      };
+      let EOS = Eos({
+        keyProvider: private_key
+        , transactionHeaders: function (_, callback) {
+          callback(null, headers)
+        }
+        , broadcast: false
+        , sign: true
+        , chainId: chainId
+        , // checkChainId: false - enable after merge of https://github.com/EOSIO/eosjs/pull/179
+      });
+      EOS.transaction(function (tr) {
+        tr.voteproducer({
+          'voter': account_name
+          , 'proxy': ''
+          , 'producers': block_producers
+        });
+      }, options).then(function (result) {
+        document.getElementById('raw_transaction').value = JSON.stringify(result['transaction'], null, "    ");
+        document.getElementById('transaction').style.display = "block";
+      });
+    }
+  </script>
+  <style>
+    html {
+      font-size: 10px;
+    }
+    
+    body {
+      margin: 0;
+      padding-bottom: 5rem;
+      display: flex;
+      align-items: center;
+      color: #e6f2ee;
+      font-size: 1.4rem;
+      font-family: Avenir, PT Sans, monospace;
+      background-image: linear-gradient(165deg, #101517 55%, #350816);
+    }
+
+    a {
+      color: purple;
+    }
+
+    table {
+      margin-left: 10rem;
+    }
+    
+    .container {
+      margin: auto;
+      display: flex;
+      -webkit-flex-direction: column;
+      -moz-flex-direction: column;
+      -ms-flex-direction: column;
+      -o-flex-direction: column;
+      flex-direction: column;
+      max-width: 1170px;
+    }
+    
+    .heading {
+      position: relative;
+      display: block;
+      width: 100%;
+      padding: 0;
+      margin-bottom: 2rem;
+      color: #e6f2ee;
+      font-size: 3.4rem;
+      line-height: 1.5;
+      font-family: 'Avenir', monospace;
+      font-weight: bold;
+      text-transform: uppercase;
+    }
+    
+    .heading:after {
+      position: absolute;
+      bottom: 0;
+      content: '';
+      display: block;
+      height: 2px;
+      width: 8rem;
+      background-color: #7f0e32;
+      border-radius: 0 0 100% 100%;
+    }
+    
+    .btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 5rem;
+      min-width: 160px;
+      width: auto;
+      margin: 3rem auto;
+      padding: 0 3rem;
+      font-size: 2.4rem;
+      transition: 0.3s all;
+      background-color: #7f0e32;
+      border: none;
+      color: #e6f2ee;
+    }
+    
+    .btn:hover {
+      cursor: pointer;
+      background-color: #7f0e32;
+      box-shadow: inset 0 0 15px rgba(189, 219, 219, 0.4), 0 0 5px rgba(127, 14, 50, 0.74), 0 0 10px rgba(127, 14, 50, 0.74);
+    }
+    
+    li,
+    input {
+      margin: 5px 0;
+    }
+    
+    label {
+      width: 20%;
+      text-align: right;
+      margin-right: 3rem;
+      font-weight: bold;
+      font-size: 1.8rem;
+    }
+    
+    input {
+      flex: 1;
+      height: 3.5rem;
+      border-radius: 0.4rem;
+      padding: 0 1rem;
+    }
+    
+    input[type=number] {
+      text-align: right;
+    }
+    
+    form div {
+      display: -webkit-flex;
+      display: -moz-flex;
+      display: -ms-flex;
+      display: -o-flex;
+      display: flex;
+      -ms-align-items: center;
+      align-items: center;
+      margin-bottom: 2rem;
+    }
+    
+    form div span {
+      margin-left: 3rem;
+    }
+    hr{
+      width: 100%;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h1 class="heading">Этап 2: Создание ОФФЛАЙН транзациии</h1>
+    <p>Для начала, сохраните этот вебсайт на свой компьютер (правый клик, <var>Сохранить как…</var>). Это можно сделать двумя путями:</p>
+    <ul>
+      <li>МАКСИМАЛЬНАЯ БЕЗОПАСНОСТЬ: Скопируйте файл на безопасный оффлайн компьютер, который никогда не подключался к интернету - это дает наилучшую защиту. В таком случае вам понадобится использовать USB диск, или внешний диск для переноса файла на этот оффлайн компьютер.</li>
+      <li>МЕНЕЕ БЕЗОПАСНЫЙ СПОСОБ, НО ЛУЧШЕ ЧЕМ ОН ЛАЙН: Если у вас нет доступа к физически отключенному оффлайн компьютеру, то отключите свой компьютер от интернета (выключите свой wi-fi, сеть, или что вы используйте). Это менее безопасно, поскольку это не защитит вас от уже имеющихся на вашем компьютере малвари или кей логгеров, но это все же более безопасно чем делать это онлайн.</li>
+    </ul>
+    <p>Пока вы <b>ОФФЛАЙН</b> проделайте следующее:</p>
+    <ol>
+      <li>Откройте сохраненный файл <var>2_generate_transaction.html</var> в вашем браузере. Ваш приватный ключ в таком случае никогда не взаимодействует с онлайн соединениями, что сильно уменьшает риски подвергнуться хакерской аттаке (или быть взломанным, оставьте один вариант.</li>
+      <li>Заполните все поля. Трижды проверьте все! В качестве <var>chain_id</var>, <var>block_num</var> и <var>ref_block_prefix</var> используйте данные полученные на предыдущем шаге.</li>
+      <li>Скопируйте или запишите созданную транзакцию, поскольку она понадобится вам на следующем шаге. Помните, что ваш приватный ключ используется для подписи транзакции, но НЕ ЯВЛЯЕТСЯ её частью.</li>
+    </ol>
+    <hr>
+    <form action="javascript:generate_transaction()">
+      <div>
+        <label for="account_name">Имя Вашего Аккаунта</label>
+        <input type="text" name="account_name" id="account_name" value="" required>
+        <br/> </div>
+      <div>
+        <label for="private_key">Приватный ключ</label>
+        <input type="text" name="private_key" id="private_key" value="" style="width: 700px;" autocomplete="off" required>
+        <br> </div>
+      <div>
+        <label for="chainId"><var>chainId</var></label>
+        <input type="text" name="chainId" id="chainId" value="" required style="width: 500px">
+        <br> </div>
+      <div>
+        <label for="block_num"><var>block_num</var></label>
+        <input type="text" name="block_num" id="block_num" value="" autocomplete="off" required>
+        <br> </div>
+      <div>
+        <label for="ref_block_prefix"><var>ref_block_prefix</var></label>
+        <input type="text" name="ref_block_prefix" id="ref_block_prefix" value="" autocomplete="off" required>
+        <br> </div>
+      <div>
+        <label for="minutes_before_expiration">Транзакция устареет через</label>
+        <input type="number" min="1" max="60" step="1" name="minutes_before_expiration" id="minutes_before_expiration" value="10" required><span> minutes</span>
+        <br> </div>
+      <div>
+        <label for="bp">Производители Блоков</label>
+        <input type="text" name="bp" id="bp" value="" style="width: 700px;" placeholder="Разделенный запятой список аккаунтов производителей блоков (не более 30). Например: alpha, beta, gamma" required>
+        <br> </div>
+      <input type="submit" value="Создать транзакцию" class="btn"> </form>
+    <div id="transaction" style="display: none">
+      <div>Созданная и подписанная <var>raw transaction</var>:</div>
+      <textarea id="raw_transaction" style="width: 1000px; height: 400px; font-size: 0.7em;"></textarea>
+      <p>Скопируйте или запишите приведенную выше <var>raw transaction</var> (пробелы не важны).</p>
+      <p>Далее, проследуйте на <a href="stage3.html" target="_blank">Шаг 3</a>, и отправьте эту транзакцию в сеть.</p>
+    </div>
+  </div>
+</body>
+
+</html>

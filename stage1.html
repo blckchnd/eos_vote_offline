@@ -1,0 +1,318 @@
+<html>
+<head>
+    <meta charset="utf-8">
+    <!-- https://github.com/EOSIO/eosjs/releases/tag/v14.1.1 -->
+    <script src="eos.js"></script>
+
+    <script>
+        function handle_error(error) {
+            document.getElementById('load_info_status').innerText = error.message;
+        }
+
+        function createNode(element) {
+            return document.createElement(element);
+        }
+
+        function append(parent, el) {
+            return parent.appendChild(el);
+        }
+
+        var producers = [];
+        function handleProducerClick(cb) {
+            var index = producers.indexOf(cb.value);
+            if (index !== -1) producers.splice(index, 1);
+            if (cb.checked) {
+                if (producers.length >= 30) {
+                    alert("Невозможно выбрать больше 30");
+                    cb.checked = false;
+                    return;
+                }
+                producers.push(cb.value);
+            }
+            document.getElementById('producers_list').value = producers.join(",");
+        }
+
+        function load() {
+            producers = [];
+            let api_endpoint = document.getElementById('api_endpoint').value;
+
+            api_endpoint = api_endpoint.replace(/\/$/, ""); //remove trailing slash
+
+            eos = Eos({httpEndpoint: api_endpoint});
+
+            eos.getInfo({}).then(function(result){
+
+                producers.push("blockchained");
+                document.getElementById('producers_list').value = "blockchained";
+                document.getElementById('loaded_info').style.display = 'block';
+                document.getElementById('network_info').innerText = JSON.stringify(result, null, "    ");
+                document.getElementById('chain_id').value = result.chain_id;
+
+                eos.getBlock(result.last_irreversible_block_num).then(
+                    function(result){
+                        document.getElementById('block_num').value = result.block_num;
+                        document.getElementById('ref_block_prefix').value = result.ref_block_prefix;
+                    }
+                );
+
+                eos.getProducers({json: true, code: "eosio", scope: "eosio", table: "producers", table_key: "", limit: 500}).then(
+                    function(result){
+                        const table = document.getElementById('producers');
+
+                        while (table.firstChild) {
+                            table.removeChild(table.firstChild);
+                        }
+
+                        let totalVotes = Number(result.total_producer_vote_weight);
+
+                        let i = 0;
+                        result.rows.map(function (p) {
+                            if (!p.is_active) return;
+
+                            i++;
+                            let tr = createNode('tr'),
+                                tdNum = createNode('td'),
+                                tdName = createNode('td'),
+                                tdUrl = createNode('td'),
+                                tdVotesPercent = createNode('td'),
+                                tdVotes = createNode('td'),
+                                tdVote = createNode('td');
+
+                            let votes = Math.floor(Number(p.total_votes)/1000000000);
+                            let votesPercent = (100.0/totalVotes*p.total_votes).toFixed(4);
+
+                            tdNum.innerHTML = `${i}`;
+                            tdName.innerHTML = `${p.owner}`;
+                            tdUrl.innerHTML = `<a href="${p.url}">${p.url}</a>`;
+                            tdVotesPercent.innerHTML = `${votesPercent}%`;
+                            tdVotes.innerHTML = `${votes}`;
+                            tdVote.innerHTML = `<input id="vote_${i.owner}" type="checkbox" value="${p.owner}"
+                                onclick="handleProducerClick(this);" ${p.owner === "blockchained" ? "checked" : ""}>`;
+
+                            append(tr, tdNum);
+                            append(tr, tdName);
+                            append(tr, tdUrl);
+                            append(tr, tdVotesPercent);
+                            append(tr, tdVotes);
+                            append(tr, tdVote);
+                            append(table, tr);
+                        });
+                    }
+                );
+
+
+            }, handle_error);
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            if (location.protocol == 'https:') { // Enforce https if served from https, to avoid "mixed content" error
+                document.getElementById('api_endpoint').pattern = '^https://.*';
+                document.getElementById('api_endpoint').title = 'Since this website is hosted via HTTPS, endpoint API needs to support HTTPS protocol. You can read more about this here: https://developer.mozilla.org/en-US/docs/Web/Security/Mixed_content';
+            }
+        });
+
+        function export_data() {
+            return "chain_id: " + document.getElementById('chain_id').value + "\r\n" +
+                "block_num: " + document.getElementById('block_num').value + "\r\n" +
+                "ref_block_prefix: " + document.getElementById('ref_block_prefix').value + "\r\n" +
+                "producers_list: " + document.getElementById('producers_list').value + "\r\n";
+        }
+        function download_file(name, contents, mime_type) {
+            mime_type = mime_type || "text/plain";
+            var blob = new Blob([contents], {type: mime_type});
+            var dlink = document.createElement('a');
+            dlink.download = name;
+            dlink.href = window.URL.createObjectURL(blob);
+            dlink.onclick = function(e) {
+                // revokeObjectURL needs a delay to work properly
+                var that = this;
+                setTimeout(function() {
+                    window.URL.revokeObjectURL(that.href);
+                }, 1500);
+            };
+            dlink.click();
+            dlink.remove();
+        }
+    </script>
+    
+    <style>
+    html {
+      font-size: 10px;
+    }
+    
+    body {
+      margin: 0;
+      padding-bottom: 5rem;
+      display: flex;
+      align-items: center;
+      color: #e6f2ee;
+      font-size: 1.4rem;
+      font-family: Avenir, PT Sans, monospace;
+      background-image: linear-gradient(165deg, #101517 55%, #350816);
+    }
+
+    a {
+        color: purple;
+    }
+
+    td {
+        padding-left: 2rem;
+    }
+    
+    .container {
+      margin: auto;
+      display: flex;
+      -webkit-flex-direction: column;
+      -moz-flex-direction: column;
+      -ms-flex-direction: column;
+      -o-flex-direction: column;
+      flex-direction: column;
+      max-width: 1170px;
+    }
+    
+    .heading {
+      position: relative;
+      display: block;
+      width: 100%;
+      padding: 0;
+      margin-bottom: 2rem;
+      color: #e6f2ee;
+      font-size: 3.4rem;
+      line-height: 1.5;
+      font-family: 'Avenir', monospace;
+      font-weight: bold;
+      text-transform: uppercase;
+    }
+    
+    .heading:after {
+      position: absolute;
+      bottom: 0;
+      content: '';
+      display: block;
+      height: 2px;
+      width: 8rem;
+      background-color: #7f0e32;
+      border-radius: 0 0 100% 100%;
+    }
+    
+    .btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 5rem;
+      min-width: 160px;
+      width: auto;
+      margin: 3rem 0;
+      padding: 0 3rem;
+      font-size: 2.4rem;
+      transition: 0.3s all;
+      background-color: #7f0e32;
+      border: none;
+      color: #e6f2ee;
+    }
+    .btn:hover {
+      cursor: pointer;
+      background-color: #7f0e32;
+      box-shadow: inset 0 0 15px rgba(189, 219, 219, 0.4), 0 0 5px rgba(127, 14, 50, 0.74), 0 0 10px rgba(127, 14, 50, 0.74);
+    }
+    
+    li,
+    input {
+      margin: 5px 0;
+    }
+    
+    label{
+      width: 20%;
+      text-align: right;
+      margin-right: 3rem;
+      font-weight: bold;
+      font-size: 1.8rem;
+    }
+    
+    input {
+      flex: 1;
+      height: 3.5rem;
+      border-radius: 0.4rem;
+      padding: 0 1rem;
+    }
+    
+    input[type=number] {
+      text-align: right;
+    }
+    
+    form div{
+      display: -webkit-flex;
+      display: -moz-flex;
+      display: -ms-flex;
+      display: -o-flex;
+      display: flex;
+      -ms-align-items: center;
+      align-items: center;
+      margin-bottom: 2rem;
+    }
+    form div span{
+      margin-left: 3rem; 
+    }
+  </style>
+    
+</head>
+<body>
+<div class="container">
+    <h1>Этап 1: Получение информации из сети (Онлайн)</h1>
+
+    <p>Данный этап необходимо выполнить в режиме онлайн.</p>
+    <p>Целью данного этапа является получение из сети необходимой информации (параметров) (<var>chain_id</var>, <var>block_num</var> и <var>ref_block_prefix</var>), которая потребуется на следующем этапе.</p>
+
+    <form action="javascript:load()">
+        <label for="api_endpoint">API сервер</label>
+        <input type="url" name="api_endpoint" id="api_endpoint" value="" list="defaultURLs" style="width: 300px;" required>
+
+        <datalist id="defaultURLs">
+            <option value="https://api-eos.blckchnd.com/" label="chain_id:aca376f206b8fc25a6ed44dbdc66547c36c6c33e3a119ffbeaef943642f0e906">
+            <option value="https://api.tokenika.io/" label="chain_id:aca376f206b8fc25a6ed44dbdc66547c36c6c33e3a119ffbeaef943642f0e906">
+            <option value="https://api1.eosasia.one/" label="chain_id:aca376f206b8fc25a6ed44dbdc66547c36c6c33e3a119ffbeaef943642f0e906">
+        </datalist>
+        <input type="submit" value="Загрузить" class="btn">
+    </form>
+    <div id="load_info_status"></div>
+    <div id="loaded_info" style="display: none;">
+        <pre id="network_info" style="font-size: 0.7em"></pre>
+
+        <hr>
+
+        <label for="chain_id">chain_id</label>
+        <input type="text" name="chain_id" id="chain_id" value="" style="width: 500px"><br>
+
+        <label for="block_num">block_num</label>
+        <input type="text" name="block_num" id="block_num" value=""><br>
+
+        <label for="ref_block_prefix">ref_block_prefix</label>
+        <input type="text" name="ref_block_prefix" id="ref_block_prefix" value=""><br>
+
+        <p>Скопируйте или запишите <var>chain_id</var>, <var>block_num</var> и <var>ref_block_prefix</var>. Это понадобиться вам на следующем этапе для генерации корректной транзакции в режиме Офлайн .</p>
+        <p>Теперь перейдите к <a href="stage2.html" target="_blank">Шагу 2</a> чтобы сгененировать транзакцию офлайн.</p>
+
+        <label for="producers_list">Список блок продюсеров</label>
+        <input type="text" name="producers_list" id="producers_list" value="" style="width: 800px"><br>
+
+        <p><input type="submit" onclick='download_file("eos_blockchain_data.txt", export_data())' value="Экспорт (.txt)" class="btn"></p>
+
+        <p>Список блок продюсеров:</p>
+        <table style="max-width: 800px; overflow-x:auto;">
+            <thead>
+            <tr>
+                <th>#</th>
+                <th>Name</th>
+                <th>URL</th>
+                <th>Votes %</th>
+                <th>Votes</th>
+                <th>Vote</th>
+            </tr>
+            </thead>
+            <tbody id=producers>
+            </tbody>
+        </table>
+    </div>
+</div>
+</body>
+</html>
