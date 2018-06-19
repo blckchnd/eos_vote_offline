@@ -19,7 +19,7 @@ The process of off-line voting is divided into three simple steps, each of them 
 2. **OFF-LINE**: [Generate and sign transaction with your private key](https://eos.blckchnd.com/vote_offline/2_generate_transaction.html) 
 3. ON-LINE: [Push the transaction to the network](https://eos.blckchnd.com/vote_offline/3_push_transaction.html)
 
-**NOTE:** Please make sure the URL always starts with `https://tokenika.github.io/secure-bp-voting`.
+**NOTE:** Please make sure the URL always starts with `https://eos.blckchnd.com/vote/offline/`.
 
 **NOTE:** Step 2 is to be done **OFF-LINE**, ideally on a computer which has never been connected to the Internet.
 
